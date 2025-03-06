@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprachassistent – Wellig animierte Anzeige</title>
+  <!-- Viewport-Meta-Tag zur Behebung der Warnung -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Google Font: Orbitron für einen futuristischen Look -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Globaler Stil */
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Orbitron', sans-serif;
+      color: #fff;
+      flex-direction: column;
+    }
+    /* Container für Animation und Antworttext */
+    .container {
+      text-align: center;
+    }
+    /* Ripple-Animation */
+    .ripple-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 20px;
+    }
+    .ripple {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 150px;
+      height: 150px;
+      border: 3px solid #00aaff;
+      border-radius: 50%;
+      opacity: 0;
+      animation: ripple 2s infinite;
+      transition: border-color 0.5s ease;
+    }
+    .ripple:nth-child(1) {
+      animation-delay: 0s;
+    }
+    .ripple:nth-child(2) {
+      animation-delay: 0.5s;
+    }
+    .ripple:nth-child(3) {
+      animation-delay: 1s;
+    }
+    @keyframes ripple {
+      0% {
+        transform: scale(0.8);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+    /* Änderungen, wenn "friday" erkannt wurde */
+    .ripple-container.active .ripple {
+      border-color: #ff00ff; /* Ändert die Farbe */
+      animation-duration: 1s; /* Schnellere Animation */
+    }
+    /* Container für die Assistenten-Antwort */
+    .assistant-response {
+      max-width: 500px;
+      margin-top: 20px;
+      font-size: 20px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Wellig animierte Darstellung -->
+    <div class="ripple-container" id="rippleContainer">
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+    </div>
+    <!-- Hier erscheint die Antwort des Assistenten -->
+    <div class="assistant-response" id="assistantResponse"></div>
+  </div>
+
+  <script>
+    // Spracherkennung initialisieren
+    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'de-DE';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = async (event) => {
+      // Letztes erfasstes Ergebnis
+      const lastResult = event.results[event.results.length - 1][0].transcript.trim();
+      console.log('Erkannt:', lastResult);
+
+      if (lastResult.toLowerCase().includes("friday")) {
+        // Animation aktivieren: CSS-Klasse hinzufügen
+        const rippleContainer = document.getElementById('rippleContainer');
+        rippleContainer.classList.add('active');
+        // Entferne die Klasse nach 5 Sekunden wieder
+        setTimeout(() => {
+          rippleContainer.classList.remove('active');
+        }, 5000);
+
+        try {
+          // API-Aufruf direkt im Frontend (nur für den privaten Gebrauch empfohlen)
+          const apiKey = 'HIER_DEIN_API_KEY';
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            mode: 'cors', // Hilft, CORS zu steuern (standardmäßig an)
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + apiKey
+            },
+            body: JSON.stringify({
+              model: "gpt-3.5-turbo",
+              messages: [
+                { "role": "system", "content": "Du bist ein hilfreicher Sprachassistent." },
+                { "role": "user", "content": lastResult }
+              ],
+              max_tokens: 150
+            })
+          });
+          const data = await response.json();
+          console.log('API Response:', data);
+          const responseText = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content 
+                                ? data.choices[0].message.content.trim() 
+                                : "Entschuldigung, etwas ist schiefgelaufen.";
+          document.getElementById('assistantResponse').textContent = responseText;
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(responseText);
+            utterance.lang = 'de-DE';
+            window.speechSynthesis.speak(utterance);
+          }
+        } catch (error) {
+          console.error('Fehler bei der API-Anfrage:', error);
+          document.getElementById('assistantResponse').textContent = 'Fehler bei der API-Anfrage.';
+        }
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('SpeechRecognition Fehler:', event.error);
+    };
+
+    recognition.onend = () => {
+      recognition.start();
+    };
+
+    recognition.start();
+  </script>
+</body>
+</html>
