@@ -1,16 +1,12 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Sprachassistent – Wellig animierte Anzeige</title>
-  <!-- Viewport-Meta-Tag zur Vermeidung von Warnungen -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Google Font: Orbitron für einen futuristischen Look -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-
+  <meta charset="UTF-8" />
+  <title>Offline-Sprachassistent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Font (kannst du bei echtem Offline-Betrieb weglassen, da externe Ressource) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
   <style>
-    /* Globaler Stil */
     body {
       margin: 0;
       padding: 0;
@@ -22,12 +18,8 @@
       font-family: 'Orbitron', sans-serif;
       color: #fff;
       flex-direction: column;
-    }
-    /* Container für Animation und Antworttext */
-    .container {
       text-align: center;
     }
-    /* Ripple-Animation */
     .ripple-container {
       position: relative;
       width: 150px;
@@ -65,117 +57,114 @@
         opacity: 0;
       }
     }
-    /* Änderungen, wenn "friday" erkannt wurde */
     .ripple-container.active .ripple {
       border-color: #ff00ff; /* Ändert die Farbe */
       animation-duration: 1s; /* Schnellere Animation */
     }
-    /* Container für die Assistenten-Antwort */
     .assistant-response {
       max-width: 500px;
-      margin-top: 60px; /* Größerer Abstand, damit die Antwort weiter unten steht */
+      margin-top: 60px;
       font-size: 20px;
       line-height: 1.5;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #666;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Wellig animierte Darstellung -->
-    <div class="ripple-container" id="rippleContainer">
-      <div class="ripple"></div>
-      <div class="ripple"></div>
-      <div class="ripple"></div>
-    </div>
-    <!-- Hier erscheint die Antwort des Assistenten -->
-    <div class="assistant-response" id="assistantResponse"></div>
+  <h1>Offline-Sprachassistent</h1>
+  <div class="ripple-container" id="rippleContainer">
+    <div class="ripple"></div>
+    <div class="ripple"></div>
+    <div class="ripple"></div>
   </div>
+  <div class="assistant-response" id="assistantResponse">Sprich etwas, das im System hinterlegt ist...</div>
+  <button id="startButton">Spracherkennung starten</button>
 
   <script>
-    // Spracherkennung initialisieren
+    // *** LOKALE FRAGEN-ANTWORT-DATENBANK ***
+    // Hier kannst du beliebige Einträge ergänzen.
+    // Key = gesuchte Wörter/Fragen, Value = Offline-Antwort
+    const offlineDB = {
+      "hallo": "Hallo! Wie kann ich dir helfen?",
+      "wer bist du": "Ich bin ein Offline-Assistent mit vordefinierten Antworten!",
+      "wie geht es dir": "Mir geht es gut, danke der Nachfrage!",
+      "friday": "Freitag erkannt! (Hier könnte ein spezielles Ereignis getriggert werden)",
+      "was ist der sinn des lebens": "42 – laut Hitchhiker's Guide to the Galaxy!",
+      "mach kaffee": "Entschuldigung, ich habe leider keine Kaffeemaschine."
+    };
+
+    // Funktion, die anhand eines erkannten Satzes
+    // eine passende Antwort aus der offlineDB sucht.
+    function getOfflineAnswer(sentence) {
+      const lower = sentence.toLowerCase();
+      // Wir suchen nach einem Schlüssel in offlineDB, der im Satz vorkommt.
+      for (let key in offlineDB) {
+        if (lower.includes(key)) {
+          return offlineDB[key];
+        }
+      }
+      // Nichts gefunden -> Standard-Antwort
+      return "Dazu habe ich leider keine offline Antwort gespeichert.";
+    }
+
+    // *** SPRECHERKENNUNG (Web Speech API) ***
+    // ACHTUNG: Web Speech API benötigt meist Internetverbindung,
+    // damit sie zuverlässig funktioniert. Offline-Support ist eingeschränkt.
     window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'de-DE';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = false;
 
-    recognition.onresult = async (event) => {
-      // Letztes erfasstes Ergebnis
-      const lastResult = event.results[event.results.length - 1][0].transcript.trim();
-      console.log('Erkannt:', lastResult);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+      console.log("Erkannt:", transcript);
 
-      // Prüfe, ob das Schlüsselwort "friday" enthalten ist
-      if (lastResult.toLowerCase().includes("friday")) {
-        // Animation aktivieren: CSS-Klasse hinzufügen
+      // Trigger die Animation, wenn "friday" im Satz ist (optional)
+      if (transcript.toLowerCase().includes("friday")) {
         const rippleContainer = document.getElementById('rippleContainer');
         rippleContainer.classList.add('active');
-        // Entferne die Klasse nach 5 Sekunden wieder
-        setTimeout(() => {
-          rippleContainer.classList.remove('active');
-        }, 5000);
+        setTimeout(() => rippleContainer.classList.remove('active'), 5000);
+      }
 
-        try {
-          // API-Aufruf direkt im Frontend (nur für den privaten Gebrauch empfohlen)
-          console.log('Sende Anfrage an die API...'); // Debug-Ausgabe
-          const apiKey = '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';
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + apiKey
-            },
-            body: JSON.stringify({
-              model: "gpt-3.5-turbo",
-              messages: [
-                { "role": "system", "content": "Du bist ein hilfreicher Sprachassistent." },
-                { "role": "user", "content": lastResult }
-              ],
-              max_tokens: 150
-            })
-          });
+      // Lokale Antwort suchen
+      const answer = getOfflineAnswer(transcript);
 
-          // Antwort der API auswerten
-          const data = await response.json();
-          console.log('API Response:', data); // Debug-Ausgabe
+      // Antwort anzeigen
+      const assistantResponse = document.getElementById('assistantResponse');
+      assistantResponse.textContent = answer;
 
-          // Wenn ein Fehler in data steckt
-          if (data.error) {
-            console.error('Fehlermeldung von der API:', data.error);
-            document.getElementById('assistantResponse').textContent = 'Fehler: ' + data.error.message;
-            return;
-          }
-
-          // Antworttext ermitteln
-          const responseText = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content 
-                                ? data.choices[0].message.content.trim() 
-                                : "Entschuldigung, etwas ist schiefgelaufen.";
-          
-          // Antwort anzeigen
-          document.getElementById('assistantResponse').textContent = responseText;
-          
-          // Antwort per Sprachausgabe wiedergeben
-          if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(responseText);
-            utterance.lang = 'de-DE';
-            window.speechSynthesis.speak(utterance);
-          }
-        } catch (error) {
-          console.error('Fehler bei der API-Anfrage:', error);
-          document.getElementById('assistantResponse').textContent = 'Fehler bei der API-Anfrage.';
-        }
+      // Sprachausgabe (optional)
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(answer);
+        utterance.lang = 'de-DE';
+        speechSynthesis.speak(utterance);
       }
     };
 
     recognition.onerror = (event) => {
-      console.error('SpeechRecognition Fehler:', event.error);
+      console.error("Spracherkennung Fehler:", event.error);
+      document.getElementById('assistantResponse').textContent = 
+        "Fehler bei der Spracherkennung: " + event.error;
     };
 
-    recognition.onend = () => {
+    // *** START-BUTTON ***
+    document.getElementById("startButton").addEventListener("click", () => {
       recognition.start();
-    };
-
-    recognition.start();
+      document.getElementById('assistantResponse').textContent = "Bitte sprich jetzt...";
+    });
   </script>
 </body>
 </html>
